@@ -1,0 +1,6 @@
+﻿*
+!.gitignore
+!*.html
+!*.md
+!assets/
+!assets/**/*
