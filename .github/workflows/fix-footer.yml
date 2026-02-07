@@ -1,0 +1,44 @@
+name: Fix Footer Characters
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: {}
+
+jobs:
+  fix-footer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Configure git
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+      - name: Replace malformed copyright characters in HTML files
+        run: |
+          set -e
+          files=$(git ls-files '*.html' || true)
+          if [ -n "$files" ]; then
+            for f in $files; do
+              perl -0777 -pe 's/\x{C2}\x{A9}/©/g' "$f" > /tmp/out && mv /tmp/out "$f" || true
+            done
+            git add .
+            if git diff --staged --quiet; then
+              echo "No changes to commit"
+            else
+              git commit -m "chore: replace malformed copyright char with ©"
+              git push
+              echo "Triggering GitHub Pages build"
+              curl -X POST \
+                -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                https://api.github.com/repos/${{ github.repository }}/pages/builds || true
+            fi
+          else
+            echo "No HTML files found"
+          fi
